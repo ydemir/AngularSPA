@@ -4,17 +4,25 @@ import "rxjs/add/operator/map";
 import "rxjs/add/operator/catch";
 import "rxjs/add/observable/throw";
 import { Observable } from "rxjs/Observable";
-import { tokenNotExpired, JwtHelper } from 'angular2-jwt';
-
+import { tokenNotExpired, JwtHelper } from "angular2-jwt";
+import { User } from "../_models/User";
+import { BehaviorSubject } from "rxjs/BehaviorSubject";
 
 @Injectable()
 export class AuthService {
   baseUrl = "http://localhost:5000/api/auth/";
   userToken: any;
-  decodedToken:any;
-  jwtHelper:JwtHelper=new JwtHelper();
+  decodedToken: any;
+  currentUser: User;
+  jwtHelper: JwtHelper = new JwtHelper();
+  private photoUrl = new BehaviorSubject<string>("../assets/user.png");
+  currentPhotoUrl = this.photoUrl.asObservable();
 
   constructor(private http: Http) {}
+
+  changeMemberPhoto(photoUrl: string) {
+    this.photoUrl.next(photoUrl);
+  }
 
   login(model: any) {
     return this.http
@@ -23,23 +31,24 @@ export class AuthService {
         const user = response.json();
         if (user) {
           localStorage.setItem("token", user.tokenString);
-          this.decodedToken=this.jwtHelper.decodeToken(user.tokenString);
-          console.log(this.decodedToken);
+          localStorage.setItem("user", JSON.stringify(user.user));
+          this.decodedToken = this.jwtHelper.decodeToken(user.tokenString);
+          this.currentUser = user.user;
           this.userToken = user.tokenString;
+          this.changeMemberPhoto(this.currentUser.photoUrl);
         }
-      }).catch(this.handleError);
+      })
+      .catch(this.handleError);
   }
 
   register(model: any) {
-    return this.http.post(
-      this.baseUrl + "register",
-      model,
-      this.RequestOptions()
-    ).catch(this.handleError);
+    return this.http
+      .post(this.baseUrl + "register", model, this.RequestOptions())
+      .catch(this.handleError);
   }
 
-  loggedIn(){
-    return tokenNotExpired('token');
+  loggedIn() {
+    return tokenNotExpired("token");
   }
 
   private RequestOptions() {
